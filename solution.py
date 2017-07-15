@@ -14,7 +14,9 @@ col_units = [cartesian_product(rows, c) for c in cols]
 minirows = ('ABC','DEF','GHI')
 minicols = ('123','456','789')
 square_units = [cartesian_product(mr, mc) for mr in minirows for mc in minicols ]
-all_units = row_units + col_units + square_units
+diag_unit_1 = [item[0] + item[1] for item in list(zip(rows, cols))]
+diag_unit_2 = [item[0] + item[1] for item in list(zip(rows, list(reversed(cols))))]
+all_units = row_units + col_units + square_units + [diag_unit_1, diag_unit_2]
 
 peer_sets = {}
 for b in boxes:
