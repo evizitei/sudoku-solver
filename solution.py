@@ -1,4 +1,28 @@
+import itertools
+import copy
+
 assignments = []
+rows = 'ABCDEFGHI'
+cols = '123456789'
+
+def cartesian_product(a, b):
+    return [ai + bj for ai in a for bj in b]
+
+boxes = cartesian_product(rows, cols)
+row_units = [cartesian_product(r, cols) for r in rows]
+col_units = [cartesian_product(rows, c) for c in cols]
+minirows = ('ABC','DEF','GHI')
+minicols = ('123','456','789')
+square_units = [cartesian_product(mr, mc) for mr in minirows for mc in minicols ]
+all_units = row_units + col_units + square_units
+
+peer_sets = {}
+for b in boxes:
+    peer_sets[b] = []
+
+for unit in all_units:
+    for box in unit:
+        peer_sets[box].append(unit)
 
 def assign_value(values, box, value):
     """
@@ -31,17 +55,14 @@ def cross(A, B):
     "Cross product of elements in A and elements in B."
     pass
 
-def grid_values(grid):
-    """
-    Convert grid into a dict of {square: char} with '123456789' for empties.
-    Args:
-        grid(string) - A grid in string form.
-    Returns:
-        A grid in dictionary form
-            Keys: The boxes, e.g., 'A1'
-            Values: The value in each box, e.g., '8'. If the box has no value, then the value will be '123456789'.
-    """
-    pass
+def grid_values(encoded_puzzle):
+    grid = {}
+    for i in range(0, len(boxes)):
+        val = encoded_puzzle[i]
+        if val == '.':
+            val = '123456789'
+        grid[boxes[i]] = val
+    return grid
 
 def display(values):
     """
@@ -49,19 +70,78 @@ def display(values):
     Args:
         values(dict): The sudoku in dictionary form
     """
-    pass
+    width = 1+max(len(values[s]) for s in boxes)
+    line = '+'.join(['-'*(width*3)]*3)
+    for r in rows:
+        print(''.join(values[r+c].center(width)+('|' if c in '36' else '')
+                      for c in cols))
+        if r in 'CF': print(line)
+    return
 
-def eliminate(values):
-    pass
+def clear_peers(box, val, puzzle):
+    units = peer_sets[box]
+    for unit in units:
+        for target in unit:
+            if target != box:
+                puzzle[target] = puzzle[target].replace(val, '')
+    return puzzle
 
-def only_choice(values):
-    pass
+def eliminate(puzzle_dict):
+    fixed_dict = puzzle_dict
+    for box, val in puzzle_dict.items():
+        if len(val) == 1:
+            fixed_dict = clear_peers(box, val, puzzle_dict)
+    return fixed_dict
+
+def only_choice(puzzle_dict):
+    for unit in all_units:
+        for digit in cols:
+            place_count = [box for box in unit if digit in puzzle_dict[box]]
+            if len(place_count) == 1:
+                puzzle_dict[place_count[0]] = digit
+    return puzzle_dict
 
 def reduce_puzzle(values):
-    pass
+    stalled = False
+    while not stalled:
+        # Check how many boxes have a determined value
+        solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
+
+        values = eliminate(values)
+        values = only_choice(values)
+
+        # Check how many boxes have a determined value, to compare
+        solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
+        # If no new values were added, stop the loop.
+        stalled = solved_values_before == solved_values_after
+        # Sanity check, return False if there is a box with zero available values:
+        if len([box for box in values.keys() if len(values[box]) == 0]):
+            return False
+    return values
 
 def search(values):
-    pass
+    # First, reduce the puzzle using the previous function
+    reduced = reduce_puzzle(values)
+    min_option_count = 10
+    min_option_square = 'A1'
+    for k, v in values.items():
+        if len(v) < min_option_count and len(v) != 1:
+            min_option_count = len(v)
+            min_option_square = k
+
+    if min_option_count <= 0:
+        return False
+
+    if min_option_count == 10:
+        # solved
+        return reduced
+
+    for i in range(min_option_count):
+        test_values = copy.deepcopy(values)
+        test_values[min_option_square] = values[min_option_square][i]
+        possibility = search(test_values)
+        if possibility:
+            return possibility
 
 def solve(grid):
     """
@@ -72,6 +152,8 @@ def solve(grid):
     Returns:
         The dictionary representation of the final sudoku grid. False if no solution exists.
     """
+    puzzle_dict = grid_values(grid)
+    return search(puzzle_dict)
 
 if __name__ == '__main__':
     diag_sudoku_grid = '2.............62....1....7...6..8...3...9...7...6..4...4....8....52.............3'
