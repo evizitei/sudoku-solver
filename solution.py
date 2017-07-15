@@ -103,6 +103,23 @@ def only_choice(puzzle_dict):
                 puzzle_dict[place_count[0]] = digit
     return puzzle_dict
 
+def naked_twins(puzzle_dict):
+    for unit in all_units:
+        doubles = [box for box in unit if len(puzzle_dict[box]) == 2]
+        for twins in itertools.combinations(doubles, 2):
+            ta = twins[0]
+            tb = twins[1]
+            if puzzle_dict[ta] == puzzle_dict[tb]:
+                vals = puzzle_dict[ta]
+                peers = [box for box in unit if box != ta and box != tb]
+                for box in peers:
+                    for val in vals:
+                        puzzle_dict[box] = puzzle_dict[box].replace(val, '')
+    return puzzle_dict
+
+
+
+
 def reduce_puzzle(values):
     stalled = False
     while not stalled:
@@ -111,6 +128,7 @@ def reduce_puzzle(values):
 
         values = eliminate(values)
         values = only_choice(values)
+        values = naked_twins(values)
 
         # Check how many boxes have a determined value, to compare
         solved_values_after = len([box for box in values.keys() if len(values[box]) == 1])
